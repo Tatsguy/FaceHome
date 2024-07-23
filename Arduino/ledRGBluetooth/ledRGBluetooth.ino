@@ -1,52 +1,61 @@
-const int PIN_RED = 5;
-const int PIN_GREEN = 6;
-const int PIN_BLUE = 9;
+#include <Stepper.h>
+#include <DHT.h>
+
 String data = "";
+int motorSpeed = 10;
+Stepper myStepper(2048, 8, 10, 9, 11);
+#define DHTPIN 2
+#define DHTTYPE DHT11
+DHT dht(DHTPIN, DHTTYPE);
+
+const int ledPin = 13; // Pin del LED
 
 void setup() {
-  pinMode(PIN_RED, OUTPUT);
-  pinMode(PIN_GREEN, OUTPUT);
-  pinMode(PIN_BLUE, OUTPUT);
   Serial.begin(9600);
+  // Inicializamos el sensor DHT
+  dht.begin();
+  // Configuramos el LED como salida
+  pinMode(ledPin, OUTPUT);
+
+  myStepper.setSpeed(motorSpeed);
 }
 
 void loop() {
-  byte red, green, blue;
-
   if (Serial.available() > 0) {
     data = Serial.readStringUntil('\n');  // Lee hasta el fin de línea (puedes ajustar esto según tu formato de entrada)
-
-    if (isValidHex(data)) {
-      long hexValue = strtol(data.c_str(), NULL, 16);  // Convierte la cadena a un valor hexadecimal
-
-      red = (hexValue >> 16) & 0xFF;
-      green = (hexValue >> 8) & 0xFF;
-      blue = hexValue & 0xFF;
-
-      setColor(red, green, blue);
-    } else {
-      Serial.println(data);
-      Serial.println("Entrada no es un valor hexadecimal valido.");
-    }
+    handleCommand(data);
   }
+
+  // Leemos la humedad relativa
+  float h = dht.readHumidity();
+  // Leemos la temperatura en grados centígrados (por defecto)
+  float t = dht.readTemperature();
+
+  // Enviamos los datos de temperatura y humedad por serial
+  Serial.print("Humedad: ");
+  Serial.print(h);
+  Serial.print(" %\t");
+  Serial.print("Temperatura: ");
+  Serial.print(t);
+  Serial.println(" *C ");
 }
 
-bool isValidHex(String str) {
-  for (int i = 0; i < str.length(); i++) {
-    char c = str.charAt(i);
-    if (!isHexadecimalDigit(c)) {
-      return false;
-    }
+void handleCommand(String command) {
+  command.trim(); // Elimina espacios en blanco al inicio y al final
+  if (command.startsWith("LED_ON")) {
+    digitalWrite(ledPin, HIGH); // Enciende el LED
+  } else if (command.startsWith("LED_OFF")) {
+    digitalWrite(ledPin, LOW); // Apaga el LED
+  } else if (command.startsWith("MOTOR_FORWARD")) {
+    int steps = command.substring(13).toInt(); // Obtiene el número de pasos desde el comando
+    myStepper.step(steps); // Mueve el motor hacia adelante
+  } else if (command.startsWith("MOTOR_BACKWARD")) {
+    int steps = command.substring(14).toInt(); // Obtiene el número de pasos desde el comando
+    myStepper.step(-steps); // Mueve el motor hacia atrás
+  } else if (command.startsWith("TEMP")) {
+    // Enviamos solo la temperatura a la aplicación
+    float t = dht.readTemperature();
+    Serial.print("Temperatura: ");
+    Serial.println(t);
   }
-  return true;
-}
-
-bool isHexadecimalDigit(char c) {
-  return (c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f');
-}
-
-void setColor(int R, int G, int B) {
-  analogWrite(PIN_RED, R);
-  analogWrite(PIN_GREEN, G);
-  analogWrite(PIN_BLUE, B);
 }

@@ -1,6 +1,6 @@
 import 'dart:io';
-
 import 'package:face_net_authentication/pages/widgets/app_button.dart';
+import 'package:face_net_authentication/pages/widgets/bt_connection.dart';
 import 'package:flutter/material.dart';
 import 'home.dart';
 
@@ -38,32 +38,7 @@ class Profile extends StatelessWidget {
                   ),
                 ],
               ),
-              Container(
-                padding: EdgeInsets.all(20.0),
-                child: Table(
-                  children: [
-                    TableRow(
-                      children: [
-                        TableCell(
-                            child: AppButton(
-                          color: Colors.blueAccent,
-                          icon: Icon(Icons.door_back_door, color: Colors.white,),
-                        )),
-                        TableCell(
-                            child: AppButton(
-                          color: Colors.black54,
-                          icon: Icon(Icons.door_back_door),
-                        )),
-                      ],
-                    ),
-                    // Add more rows and cells as needed
-                  ],
-                ),
-              ),
-              AppButton(
-                color: Colors.redAccent,
-                icon: Icon(Icons.door_back_door, color: Colors.white,),
-              ),
+              BtConnection(),
               Spacer(),
               AppButton(
                 text: "Salir",
