@@ -39,7 +39,6 @@ class Profile extends StatelessWidget {
                 ],
               ),
               BtConnection(),
-              Spacer(),
               AppButton(
                 text: "Salir",
                 onPressed: () {

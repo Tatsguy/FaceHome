@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:typed_data';
+
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -18,6 +21,8 @@ class _BtConnectionState extends State<BtConnection> {
   List<BluetoothDevice> _devices = [];
   BluetoothDevice? _deviceConnected;
   int times = 0;
+  String temperature = 'N/A';
+  StreamSubscription<Uint8List>? _subscription;
 
   void _getDevices() async {
     var res = await _bluetooth.getBondedDevices();
@@ -25,17 +30,14 @@ class _BtConnectionState extends State<BtConnection> {
   }
 
   void _receiveData() {
-    _connection?.input?.listen((event) {
-      if (String.fromCharCodes(event) == "p") {
-        setState(() => times = times + 1);
+    _subscription = _connection?.input?.listen((Uint8List data) {
+      String receivedData = utf8.decode(data);
+      if (receivedData.contains("TEMP:")) {
+        setState(() {
+          temperature = receivedData.split(":")[1].substring(0, 5);
+        });
       }
     });
-  }
-
-  void _sendData(String data) {
-    if (_connection?.isConnected ?? false) {
-      _connection?.output.add(ascii.encode(data));
-    }
   }
 
   void _requestPermission() async {
@@ -112,9 +114,36 @@ class _BtConnectionState extends State<BtConnection> {
     });
   }
 
+  void sendMessage(String message) {
+    if (_connection != null) {
+      _connection!.output.add(Uint8List.fromList(utf8.encode(message + "\n")));
+    }
+  }
+
+  bool isOn = false;
+
+  void toggleLed() {
+    setState(() {
+      isOn = !isOn;
+      !isOn ? sendMessage("LED_OFF") : sendMessage("LED_ON");
+    });
+  }
+
+  bool isOpen = false;
+
+  void toggleDoor() {
+    setState(() {
+      isOpen = !isOpen;
+      !isOpen
+          ? sendMessage("MOTOR_BACKWARD1000")
+          : sendMessage("MOTOR_FORWARD1000");
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Expanded(child: Row(
+    return Expanded(
+        child: Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Column(
@@ -123,12 +152,13 @@ class _BtConnectionState extends State<BtConnection> {
               title: 'Control LED',
               icon: Icons.lightbulb_outline,
               onPressed: () {
-                // Lógica para controlar el LED
+                toggleLed();
               },
             ),
             SensorDisplayCard(
               title: 'Temperatura',
-              value: '25°C', // Aquí debes obtener el valor real del sensor
+              value:
+                  '$temperature °C', // Aquí debes obtener el valor real del sensor
               icon: Icons.thermostat_outlined,
             )
           ],
@@ -139,21 +169,19 @@ class _BtConnectionState extends State<BtConnection> {
               title: 'Motor Puerta',
               icon: Icons.lock_outline,
               onPressed: () {
-                // Lógica para controlar el motor
+                toggleDoor();
               },
             ),
-            ElevatedButton(
-                onPressed: _bluetoothState ? _showDevices : null,
-                child: Icon(
-                  Icons.bluetooth,
-                  size: 100,
-                ),
-                style: ElevatedButton.styleFrom(padding: EdgeInsets.all(16.0)))
+            Expanded(
+                child: ElevatedButton(
+              onPressed: _bluetoothState ? _showDevices : null,
+              child: Icon(
+                Icons.bluetooth,
+                size: 100,
+              ),
+            ))
           ],
-        ),
-        if (_deviceConnected != null)
-          Text('Conectado a: ${_deviceConnected?.name}'),
-        if (_isConnecting) CircularProgressIndicator(),
+        )
       ],
     ));
   }
@@ -169,21 +197,24 @@ class SensorControlCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return Expanded(
+        child: Card(
       child: InkWell(
         onTap: onPressed,
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 48),
+              Icon(icon, size: 100),
               SizedBox(height: 8),
-              Text(title),
+              Text(title,
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
             ],
           ),
         ),
       ),
-    );
+    ));
   }
 }
 
@@ -197,18 +228,22 @@ class SensorDisplayCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return Expanded(
+        child: Card(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 48),
+            Icon(icon, size: 100),
             SizedBox(height: 8),
-            Text(title),
-            Text(value),
+            Text(title,
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+            Text(value,
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
           ],
         ),
       ),
-    );
+    ));
   }
 }
